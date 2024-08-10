@@ -1,0 +1,2 @@
+pimoroni-pico-stubs
+requests
