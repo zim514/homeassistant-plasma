@@ -1,3 +1,5 @@
+#original version from https://github.com/pimoroni/pimoroni-pico/blob/970046e84ae73cad23deae28fd6e96427aa0eb64/micropython/examples/common/network_manager.py
+
 import rp2
 import network
 import machine

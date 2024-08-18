@@ -1,3 +1,11 @@
+# HomeAssistant Plasma - strip_controller.py
+# (c) 2024 Snapcase
+# Inspired by https://github.com/eminentspoon/picoplasma_homeassistant
+# Uses effect examples from Pimoroni: https://github.com/pimoroni/pimoroni-pico/tree/main/micropython/examples/plasma_stick
+# For Pimoroni Plasma Stick 2040W https://shop.pimoroni.com/products/plasma-stick-2040-w?variant=40359072301139
+# Suppports home assistant MQTT discovery. Edit Config.py with your WiFi information and an MQTT broker connected to Home Assistant.  https://www.home-assistant.io/integrations/mqtt/
+
+
 from random import randrange, uniform
 
 import plasma
