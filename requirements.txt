@@ -1,2 +1,3 @@
 pimoroni-pico-stubs
 requests
+ujson

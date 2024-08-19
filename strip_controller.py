@@ -42,14 +42,16 @@ class StripController:
         self.effects = Effects(self.led_strip, CONFIG.NUM_LEDS, self.current_leds, self.target_leds)
         self.update_task = asyncio.create_task(self.update_led_strip_task())
 
+    @micropython.native
     async def update_led_strip_task(self):
         while True:
             await self.effects.move_to_target(self.effects.current_leds, self.effects.target_leds, self.effects.num_leds)
-            await self.display_current(self.effects.num_leds, self.effects.led_strip, self.effects.current_leds)
+            await self._display_current(self.effects.num_leds, self.effects.led_strip, self.effects.current_leds)
             await asyncio.sleep_ms(10)
 
     @staticmethod
-    async def display_current(num_leds, led_strip, current_leds):
+    @micropython.native
+    async def _display_current(num_leds, led_strip, current_leds):
 
         # paint our current LED colours to the strip_controller
         for i in range(num_leds):
@@ -88,7 +90,7 @@ class StripController:
         h, s, v = self.effects.rgb_to_hsv(r, g, b)
         self.set_state(hue=h, saturation=s, brightness=v, state=True)
 
-    async def apply_effect(self, effect, state, brightness, hue=None, saturation=None):
+    async def _apply_effect(self, effect, state, brightness, hue=None, saturation=None):
         print(f"Apply_effect: {effect}, state: {state}, hue: {hue}, saturation: {saturation}, brightness: {brightness}")
         if effect in self.effects.effects.keys():
             if effect in self.effects.colour_effects:
@@ -105,7 +107,7 @@ class StripController:
         if self.effect_task:
             self.effect_task.cancel()  # Cancel the previous effect task if any
         print(f"Starting {self.effect} effect")
-        self.effect_task = asyncio.create_task(self.apply_effect(self.effect, self.state, self.brightness, self.hue, self.saturation))
+        self.effect_task = asyncio.create_task(self._apply_effect(self.effect, self.state, self.brightness, self.hue, self.saturation))
 
 
 class Effects:
@@ -141,16 +143,18 @@ class Effects:
         self.default_animation_speed = self.animation_step_size = 1
         self.animation_step_delay = 10
 
+    @micropython.native
     async def move_to_target(self, current_leds, target_leds, num_leds):
         for i in range(num_leds):
             for c in range(3):
-                delta = target_leds[i][c] - current_leds[i][c]  # Calculate the difference between target and current color value
-                step = max(-self.animation_step_size, min(self.animation_step_size, delta))  # Determine the step size based on animation_step_size
-                current_leds[i][c] += step  # Update the current color value by the step size
+                current = current_leds[i][c]
+                target = target_leds[i][c]
+                delta = target - current
+                step = max(-self.animation_step_size, min(self.animation_step_size, delta))
+                current_leds[i][c] += step
 
-                # If the current value is close enough to the target value, set it to the target value
-                if abs(current_leds[i][c] - target_leds[i][c]) < abs(step):
-                    current_leds[i][c] = target_leds[i][c]
+                if abs(current - target) < abs(step):
+                    current_leds[i][c] = target
 
         # Introduce a delay between each step to control the animation speed
         await asyncio.sleep_ms(self.animation_step_delay)
@@ -177,12 +181,14 @@ class Effects:
         for i in range(self.num_leds):
             self.target_leds[i] = [r, g, b]
 
+    @micropython.native
     async def sparkles_effect(self, hue, saturation, brightness, state):
-        self.animation_step_size = 3
+        self.animation_step_size = 1
         self.animation_step_delay = 1
-        frame_speed = 200
-        sparkle_intensity = 0.010
-        brightness = min(max(brightness, 0), 230)  # Min & Max brightness for this effect, to stay within working strip range
+        frame_speed = 300
+        sparkle_frequency = 0.005
+        brightness = min(max(brightness, 30), 255)  # Min & Max brightness for this effect, to stay within working strip range
+
         print(f"Sparkles Brightness: {brightness}, hue: {hue}, saturation: {saturation}, brightness: {brightness}")
 
         if state:
@@ -194,15 +200,14 @@ class Effects:
             s = saturation / 100
             v = brightness / 255 if state else 0
 
-            sparkle_rgb = self.hsv_to_rgb(h, s, max(v, 0.20))
-            background_rgb = self.hsv_to_rgb(h, s, v * 0.3)
-
-            self.current_leds = [background_rgb[:] for _ in range(self.num_leds)]
+            sparkle_rgb = self.hsv_to_rgb(h, s, v)
+            background_rgb = self.hsv_to_rgb(h, s, v * 0.4)
+            print(f"Sparkles Background RGB: {background_rgb}, sparkle_rgb: {sparkle_rgb}")
             self.target_leds = [background_rgb[:] for _ in range(self.num_leds)]
 
             while state:
                 for i in range(self.num_leds):
-                    if sparkle_intensity > uniform(0, 1):
+                    if sparkle_frequency > uniform(0, 1):
                         self.target_leds[i] = sparkle_rgb[:]
                     if self.current_leds[i] == self.target_leds[i]:
                         self.target_leds[i] = background_rgb[:]
@@ -211,11 +216,12 @@ class Effects:
         else:
             await self.static_effect(0, 0, 0, state)
 
+    @micropython.native
     async def storm_effect(self, state, brightness):
 
         self.animation_step_size = 5
         self.animation_step_delay = 1
-        frame_speed = 100  #time between colour updates
+        frame_speed = 100  # time between colour updates
         brightness = min(max(brightness, 10), 255)  # Min & Max brightness for this effect, to stay within range
 
         lightning_chance = 0.005
@@ -231,7 +237,7 @@ class Effects:
                 else:
                     self.target_leds[i] = self.scale_brightness([0, 30, 120], brightness)
 
-            if lightning_chance > uniform(0, 1):  #change current rather than target for abrupt lightning
+            if lightning_chance > uniform(0, 1):  # change current rather than target for abrupt lightning
                 for i in range(self.num_leds):
                     self.current_leds[i] = self.scale_brightness([255, 255, 255], brightness)
 
@@ -239,12 +245,13 @@ class Effects:
         else:
             await self.static_effect(0, 0, 0, state)
 
+    @micropython.native
     async def rain_effect(self, state, brightness):
         # splodgy blues
 
         self.animation_step_size = 1
         self.animation_step_delay = 1
-        frame_speed = 200  #time between colour updates
+        frame_speed = 200  # time between colour updates
         brightness = min(max(brightness, 10), 255)  # Min & Max brightness for this effect, to stay within range
 
         raindrop_chance = 0.01  # moderate rain
@@ -261,6 +268,7 @@ class Effects:
         else:
             await self.static_effect(0, 0, 0, False)
 
+    @micropython.native
     async def clouds_effect(self, state, brightness):
 
         cloud_colour = [165, 168, 138]  # partly cloudy
@@ -269,13 +277,13 @@ class Effects:
         self.animation_step_size = 1
         self.animation_step_delay = 2
         frame_speed = 10  # how many ms between colour updates
-        #frame_speed = randrange(500, 1500, 200)
+        # frame_speed = randrange(500, 1500, 200)
 
         print(f"Clouds Effect: State: {state}, brightness: {brightness}, cloud_colour: {cloud_colour}, self.animation_step_size: {self.animation_step_size}, animation_step_delay: {self.animation_step_delay}")
 
         if state:
             for i in range(self.num_leds):
-                self.target_leds[i] = self.scale_brightness(cloud_colour, brightness)  #paint with initial cloud colour
+                self.target_leds[i] = self.scale_brightness(cloud_colour, brightness)  # paint with initial cloud colour
 
             while state:
                 # add highlights and lowlights
@@ -300,11 +308,12 @@ class Effects:
         else:
             await self.static_effect(0, 0, 0, False)
 
+    @micropython.native
     async def snow_effect(self, state, brightness):
         # splodgy whites
         self.animation_step_size = 1
         self.animation_step_delay = 2
-        frame_speed = 200  #time between colour updates
+        frame_speed = 200  # time between colour updates
         brightness = min(max(brightness, 10), 255)  # Min & Max brightness for this effect, to stay within range
 
         snowflake_chance = 0.003  # moderate snow
@@ -324,11 +333,12 @@ class Effects:
         else:
             await self.static_effect(0, 0, 0, False)
 
+    @micropython.native
     async def sun_effect(self, state, brightness):
         # shimmering yellow
         self.animation_step_size = 1
         self.animation_step_delay = 5
-        #frame_speed = 1000  # how many ms between colour updates
+        # frame_speed = 1000  # how many ms between colour updates
         frame_speed = 300
 
         brightness = min(max(brightness, 40), 255)  # Min & Max brightness for this effect, to stay within yellow range
@@ -343,6 +353,7 @@ class Effects:
         else:
             await self.static_effect(0, 0, 0, False)
 
+    @micropython.native
     async def sky_effect(self, state, brightness):
         # sky blues
         self.animation_step_size = 1
@@ -361,10 +372,13 @@ class Effects:
         else:
             await self.static_effect(0, 0, 0, False)
 
+
+    @micropython.native
     @staticmethod
     def scale_brightness(rgb, brightness):
         return [max(25, round(color * brightness / 255)) for color in rgb]
 
+    @micropython.native
     @staticmethod
     def rgb_to_hsv(r, g, b):
         r, g, b = r / 255.0, g / 255.0, b / 255.0
@@ -386,6 +400,7 @@ class Effects:
         v = max_c * 100
         return round(h, 4), round(s, 4), round(v, 4)
 
+    @micropython.native
     @staticmethod
     def hsv_to_rgb(h, s, v):
         if s == 0.0:

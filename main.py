@@ -1,16 +1,17 @@
 # HomeAssistant Plasma
 # (c) 2024 Snapcase
 # Inspired by https://github.com/eminentspoon/picoplasma_homeassistant
-# Uses effect examples from Pimoroni: https://github.com/pimoroni/pimoroni-pico/tree/main/micropython/examples/plasma_stick
+# Uses effect examples from Pimoroni: https://github.com/pimoroni/pimoroni-pico/tree/main/micropython/examples/plasma_stick\
+# MQTT from: https://github.com/micropython/micropython-lib/tree/master/micropython/umqtt.simple
 # For Pimoroni Plasma Stick 2040W https://shop.pimoroni.com/products/plasma-stick-2040-w?variant=40359072301139
 # Suppports home assistant MQTT discovery. Edit Config.py with your WiFi information and an MQTT broker connected to Home Assistant.  https://www.home-assistant.io/integrations/mqtt/
 
-
-import json
 import sys
 
 import uasyncio as asyncio
+import ujson as json
 from machine import Pin
+from micropython import const
 from umqtt.simple import MQTTClient
 
 from strip_controller import StripController
@@ -26,7 +27,7 @@ STATE_TOPIC = f'{CONFIG.MQTT_DISCOVERY_PREFIX}/light/{CONFIG.MQTT_CLIENTID}'
 COMMAND_TOPIC = f'{CONFIG.MQTT_DISCOVERY_PREFIX}/light/{CONFIG.MQTT_CLIENTID}/set'
 AVAILABILITY_TOPIC = f"{CONFIG.MQTT_DISCOVERY_PREFIX}/light/{CONFIG.MQTT_CLIENTID}/available"
 
-RECONNECT_DELAY = 10
+RECONNECT_DELAY = const(10)
 
 
 class HomeAssistantPlasmaStick:
@@ -177,6 +178,7 @@ class HomeAssistantPlasmaStick:
 
         self.mqtt_broadcast_state()
 
+    @micropython.native
     async def process_messages(self):
         while True:
             if self.message_queue and not self.processing_message:
@@ -227,6 +229,7 @@ class HomeAssistantPlasmaStick:
                 self.processing_message = False
             await asyncio.sleep_ms(50)  # Small delay to yield control
 
+    @micropython.native
     async def main(self):
         print(f'Starting up... homeassistant-plasmastick - {sys.version}')
 
