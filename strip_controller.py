@@ -72,7 +72,6 @@ class StripController:
 
         if effect is not None:
             self.effect = effect
-            print(f'set_state Effect: {effect}')
 
         if state is not None:
             self.state = state
@@ -82,7 +81,7 @@ class StripController:
 
         if brightness is not None:
             self.brightness = brightness
-
+        print(f"set_state: New State: {state}, brightness: {brightness}, hue: {hue}, saturation: {saturation}, Effect: {effect}")
         self._update_strip()
 
     def set_rgb(self, r, g, b):
@@ -90,7 +89,7 @@ class StripController:
         self.set_state(hue=h, saturation=s, brightness=v, state=True)
 
     async def apply_effect(self, effect, state, brightness, hue=None, saturation=None):
-        print(f"Apply_effect: {effect}")
+        print(f"Apply_effect: {effect}, state: {state}, hue: {hue}, saturation: {saturation}, brightness: {brightness}")
         if effect in self.effects.effects.keys():
             if effect in self.effects.colour_effects:
                 await self.effects.effects[effect](self.effects, hue, saturation, brightness, state)
@@ -156,7 +155,6 @@ class Effects:
         # Introduce a delay between each step to control the animation speed
         await asyncio.sleep_ms(self.animation_step_delay)
 
-
     async def status_effect(self, r, g, b):
         self.animation_step_size = 5
         self.animation_step_delay = 20
@@ -184,7 +182,8 @@ class Effects:
         self.animation_step_delay = 1
         frame_speed = 200
         sparkle_intensity = 0.010
-        brightness = max(min(brightness, 10), 230)  # Min & Max brightness for this effect, to stay within working strip range
+        brightness = min(max(brightness, 0), 230)  # Min & Max brightness for this effect, to stay within working strip range
+        print(f"Sparkles Brightness: {brightness}, hue: {hue}, saturation: {saturation}, brightness: {brightness}")
 
         if state:
             if hue == 0 and saturation == 0:
@@ -230,9 +229,9 @@ class Effects:
                     color = self.scale_brightness([randrange(0, 50), randrange(20, 100), randrange(50, 255)], brightness)
                     self.current_leds[i] = color
                 else:
-                    self.target_leds[i] = self.scale_brightness([0, 15, 60], brightness)
+                    self.target_leds[i] = self.scale_brightness([0, 30, 120], brightness)
 
-            if lightning_chance > uniform(0, 1): #change current rather than target for abrupt lightning
+            if lightning_chance > uniform(0, 1):  #change current rather than target for abrupt lightning
                 for i in range(self.num_leds):
                     self.current_leds[i] = self.scale_brightness([255, 255, 255], brightness)
 
@@ -250,7 +249,6 @@ class Effects:
 
         raindrop_chance = 0.01  # moderate rain
 
-
         print(f"Rain Effect: State: {state}, brightness: {brightness}, raindrop_chance: {raindrop_chance}")
         if state:
             while state:
@@ -266,18 +264,18 @@ class Effects:
     async def clouds_effect(self, state, brightness):
 
         cloud_colour = [165, 168, 138]  # partly cloudy
-        brightness = max(min(brightness, 15), 255)  # Min & Max brightness for this effect, to stay within working strip range
+        brightness = min(max(brightness, 10), 230)  # Min & Max brightness for this effect, to stay within working strip range
 
         self.animation_step_size = 1
         self.animation_step_delay = 2
-        frame_speed = 200  # how many ms between colour updates
+        frame_speed = 10  # how many ms between colour updates
         #frame_speed = randrange(500, 1500, 200)
 
         print(f"Clouds Effect: State: {state}, brightness: {brightness}, cloud_colour: {cloud_colour}, self.animation_step_size: {self.animation_step_size}, animation_step_delay: {self.animation_step_delay}")
 
         if state:
             for i in range(self.num_leds):
-                self.target_leds[i] = self.scale_brightness(cloud_colour, brightness) #paint with initial cloud colour
+                self.target_leds[i] = self.scale_brightness(cloud_colour, brightness)  #paint with initial cloud colour
 
             while state:
                 # add highlights and lowlights
@@ -321,7 +319,7 @@ class Effects:
                         self.current_leds[i] = self.scale_brightness([227, 227, 227], brightness)
                     else:
                         # paint backdrop
-                        self.target_leds[i] = self.scale_brightness([54, 54, 54],brightness)
+                        self.target_leds[i] = self.scale_brightness([54, 54, 54], brightness)
                 await asyncio.sleep_ms(frame_speed)
         else:
             await self.static_effect(0, 0, 0, False)
