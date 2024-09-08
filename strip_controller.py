@@ -47,7 +47,7 @@ class StripController:
         while True:
             await self.effects.move_to_target(self.effects.current_leds, self.effects.target_leds, self.effects.num_leds)
             await self._display_current(self.effects.num_leds, self.effects.led_strip, self.effects.current_leds)
-            await asyncio.sleep_ms(10)
+            await asyncio.sleep_ms(5)
 
     @staticmethod
     @micropython.native
@@ -218,9 +218,9 @@ class Effects:
             await self.static_effect(0, 0, 0, state)
 
     async def chaser_effect(self, hue, saturation, brightness, state):
-        self.animation_step_size = 5 #how quickly the light fades to black
-        self.animation_step_delay = 1 #how slow the overall animation is
-        frame_speed = 200 #how fast the light moves
+        self.animation_step_size = 5  #how quickly the light fades to black
+        self.animation_step_delay = 1  #how slow the overall animation is
+        frame_speed = 200  #how fast the light moves
         brightness = min(max(brightness, 30), 255)  # Min & Max brightness for this effect, to stay within working strip range
 
         print(f"Chaser Brightness: {brightness}, hue: {hue}, saturation: {saturation}, brightness: {brightness}")
@@ -248,7 +248,6 @@ class Effects:
                         self.target_leds[i] = chaser_rgb[:]
                     if self.current_leds[i] == self.target_leds[i]:
                         self.target_leds[i] = background_rgb[:]
-
 
                 if current_led <= self.num_leds:
                     current_led = (current_led + 1)
@@ -389,8 +388,7 @@ class Effects:
 
         print(f"Sun Effect: State: {state}, brightness: {brightness}, animation_step_size: {self.animation_step_size}, animation_step_delay: {self.animation_step_delay}, frame_speed: {frame_speed}")
         if state:
-
-            while state:
+            while True:
                 for i in range(self.num_leds):
                     self.target_leds[i] = self.scale_brightness([randrange(220, 255), randrange(220, 255), randrange(50, 90)], brightness)
                 await asyncio.sleep_ms(frame_speed)
@@ -415,7 +413,6 @@ class Effects:
                 await asyncio.sleep_ms(frame_speed)
         else:
             await self.static_effect(0, 0, 0, False)
-
 
     @micropython.native
     @staticmethod
