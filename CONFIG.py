@@ -1,3 +1,6 @@
+# Defaults. Copy and rename to config_local.py to avoid overwriting your settings if reinstalling the whole package
+
+
 NUM_LEDS = 50  #Number of leads on the light strip
 
 WIFI_SSID = "WIFI"

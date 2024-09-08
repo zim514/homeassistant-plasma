@@ -132,8 +132,9 @@ class Effects:
                         "Sky": Effects.sky_effect,
                         # "Fire": Effects.fire_effect,
                         # "Rainbow": Effects.rainbow_effect,
+                        "Chaser": Effects.chaser_effect,
                         "Sparkles": Effects.sparkles_effect}
-        self.colour_effects = ["None", "Sparkles"]  # Effects that support setting a colour in HS mode
+        self.colour_effects = ["None", "Sparkles", "Chaser"]  # Effects that support setting a colour in HS mode
 
         self.led_strip = led_strip
         self.num_leds = num_leds
@@ -163,7 +164,7 @@ class Effects:
         self.animation_step_size = 5
         self.animation_step_delay = 20
 
-        print(f"Status Effect: {r}, {g}, {b}")
+        #print(f"Status Effect: {r}, {g}, {b}")
         for i in range(self.num_leds):
             self.target_leds[i] = [r, g, b]
 
@@ -215,6 +216,49 @@ class Effects:
                 await asyncio.sleep_ms(frame_speed)
         else:
             await self.static_effect(0, 0, 0, state)
+
+    async def chaser_effect(self, hue, saturation, brightness, state):
+        self.animation_step_size = 5 #how quickly the light fades to black
+        self.animation_step_delay = 1 #how slow the overall animation is
+        frame_speed = 200 #how fast the light moves
+        brightness = min(max(brightness, 30), 255)  # Min & Max brightness for this effect, to stay within working strip range
+
+        print(f"Chaser Brightness: {brightness}, hue: {hue}, saturation: {saturation}, brightness: {brightness}")
+
+        if state:
+            if hue == 0 and saturation == 0:
+                hue = 50
+                saturation = 80
+
+            h = hue / 360
+            s = saturation / 100
+            v = brightness / 255 if state else 0
+
+            chaser_rgb = self.hsv_to_rgb(h, s, v)
+            #background_rgb = self.hsv_to_rgb(h, s, v * 0.4)
+            background_rgb = [0, 0, 0]
+
+            print(f"Chaser Background RGB: {background_rgb}, chaser_rgb: {chaser_rgb}")
+            self.target_leds = [background_rgb[:] for _ in range(self.num_leds)]
+            current_led = 0
+
+            while state:
+                for i in range(self.num_leds):
+                    if i == current_led:
+                        self.target_leds[i] = chaser_rgb[:]
+                    if self.current_leds[i] == self.target_leds[i]:
+                        self.target_leds[i] = background_rgb[:]
+
+
+                if current_led <= self.num_leds:
+                    current_led = (current_led + 1)
+                else:
+                    current_led = 0
+
+                await asyncio.sleep_ms(frame_speed)
+        else:
+            await self.static_effect(0, 0, 0, state)
+
 
     @micropython.native
     async def storm_effect(self, state, brightness):
