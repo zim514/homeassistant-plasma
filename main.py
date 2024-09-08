@@ -270,14 +270,16 @@ class HomeAssistantPlasmaStick:
                     ping_counter = 0
                 ping_counter += 1
             except OSError as e:
-                print(f'MQTT check_msg failed! {e}')
+                print(f'MQTT check_msg failed! Exception: {e}')
                 if self.mqtt_client:
                     try:
                         self.mqtt_client.disconnect()  # ensure proper disconnection
+
                     except Exception:
                         pass
                 self.mqtt_client = None
-                await self.mqtt_connect()  # Attempt to reconnect
+                print('MQTT Disconnected')
+                #await self.mqtt_connect()  # Attempt to reconnect
 
             await asyncio.sleep(1)  # Check messages every second
 
