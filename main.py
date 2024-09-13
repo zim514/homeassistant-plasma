@@ -35,8 +35,6 @@ class HomeAssistantPlasmaStick:
         self.strip_controller = StripController()
         self.network_manager = NetworkManager(CONFIG.WIFI_COUNTRY, status_handler=self.wifi_status_handler, error_handler=self.wifi_error_handler, client_timeout=15)
         self.mqtt_client = None
-        self.message_queue = []  # List to act as a queue for incoming MQTT messages
-        self.processing_message = False
 
         self.pico_led = Pin('LED', Pin.OUT)  # set up the Pico W's onboard LED
         self.pico_led.value(True)  # Turn on LED to indiciate initilization started
@@ -105,7 +103,7 @@ class HomeAssistantPlasmaStick:
                     await asyncio.sleep_ms(100)
                     self.pico_led.value(False)
 
-
+                print('MQTT: Ready')
 
             except OSError as e:
                 print(f'MQTT connection failed: {e}. Trying again in 15 seconds')
@@ -145,7 +143,56 @@ class HomeAssistantPlasmaStick:
         topic = topic.decode('utf-8')
         msg = msg.decode('utf-8')
         print(f"MQTT Subscribed Message Received:  {topic}, message: {msg}")
-        self.message_queue.append((topic, msg))
+
+        loop = asyncio.get_event_loop()
+        loop.create_task(self.process_incoming_message(topic, msg))
+
+    async def process_incoming_message(self, topic, msg):
+        if topic == f"{CONFIG.MQTT_DISCOVERY_PREFIX}/status" and msg == "online":
+            print("Home assistant is back online, announce auto discovery")
+            await self.mqtt_announce()
+        elif topic == COMMAND_TOPIC:
+            command = json.loads(msg)
+            print(f"Set command received: {command}")
+            state = None
+            hue = None
+            saturation = None
+            brightness = None
+            effect = None
+
+            try:
+                state_command = command['state']
+                if state_command == "ON":
+                    state = True
+                if state_command == "OFF":
+                    state = False
+                print(f"State: {state}")
+            except KeyError:
+                pass
+
+            try:
+                color_command = command['color']
+                hue = color_command['h']
+                saturation = color_command['s']
+                print(f"Hue: {hue}, Sat: {saturation}")
+            except KeyError:
+                pass
+
+            try:
+                brightness = command['brightness']
+                print(f"Brightness: = {brightness}")
+            except KeyError:
+                pass
+
+            try:
+                effect = command['effect']
+                print(f"Effect: {effect}")
+            except KeyError:
+                pass
+
+            print("Parsed command, updating led state")
+            await self.strip_controller.set_state(brightness=brightness, state=state, hue=hue, saturation=saturation, effect=effect)
+            self.mqtt_broadcast_state()
 
     async def mqtt_announce(self):
         print('Announce MQTT Config')
@@ -178,56 +225,6 @@ class HomeAssistantPlasmaStick:
 
         self.mqtt_broadcast_state()
 
-    async def process_messages(self):
-        while True:
-            if self.message_queue and not self.processing_message:
-                self.processing_message = True
-                topic, msg = self.message_queue.pop(0)
-                if topic == f"{CONFIG.MQTT_DISCOVERY_PREFIX}/status" and msg == "online":
-                    print("Home assistant is back online, announce auto discovery")
-                    await self.mqtt_announce()
-                elif topic == COMMAND_TOPIC:
-                    command = json.loads(msg)
-                    print(f"Set command received: {command}")
-                    state = None
-                    hue = None
-                    saturation = None
-                    brightness = None
-                    effect = None
-                    try:
-                        state_command = command['state']
-                        if state_command == "ON":
-                            state = True
-                        if state_command == "OFF":
-                            state = False
-                        print(f"State: {state}")
-                    except KeyError:
-                        pass
-                    try:
-                        color_command = command['color']
-                        hue = color_command['h']
-                        saturation = color_command['s']
-                        print(f"Hue: {hue}, Sat: {saturation}")
-                    except KeyError:
-                        pass
-                    try:
-                        brightness = command['brightness']
-                        print(f"Brightness:  = {brightness}")
-                    except KeyError:
-                        pass
-
-                    try:
-                        effect = command['effect']
-                        print(f"Effect: {effect}")
-                    except KeyError:
-                        pass
-
-                    print("Parsed command, updating led state")
-                    await self.strip_controller.set_state(brightness=brightness, state=state, hue=hue, saturation=saturation, effect=effect)
-                    self.mqtt_broadcast_state()
-                self.processing_message = False
-            await asyncio.sleep_ms(5)  # Small delay to yield control
-
     async def main(self):
         print(f'Starting up... homeassistant-plasmastick - {sys.version}')
 
@@ -242,8 +239,7 @@ class HomeAssistantPlasmaStick:
                 # return  # Exit if WiFi connection fails
 
         await self.mqtt_connect()
-        print('MQTT: Ready')
-        asyncio.create_task(self.process_messages())
+
 
         ping_counter = 0
         while True:
@@ -253,7 +249,7 @@ class HomeAssistantPlasmaStick:
                 else:
                     await self.mqtt_connect()
 
-                if ping_counter >= 30 and self.mqtt_client:  # Send a ping every 30 seconds
+                if ping_counter >= 60 and self.mqtt_client:  # Send a ping every 30 seconds
                     ping_counter = 0
                     try:
                         self.mqtt_client.ping()
@@ -280,7 +276,7 @@ class HomeAssistantPlasmaStick:
                 print('MQTT Disconnected')
                 # await self.mqtt_connect()  # Attempt to reconnect
 
-            await asyncio.sleep_ms(1000)
+            await asyncio.sleep_ms(500)
 
 
 if __name__ == '__main__':
