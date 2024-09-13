@@ -8,7 +8,7 @@
 
 import sys
 
-import uasyncio as asyncio
+import asyncio
 import ujson as json
 from machine import Pin
 from micropython import const
@@ -39,7 +39,7 @@ class HomeAssistantPlasmaStick:
         self.processing_message = False
 
         self.pico_led = Pin('LED', Pin.OUT)  # set up the Pico W's onboard LED
-        self.pico_led.value(True)  #Turn on LED to indiciate initilization started
+        self.pico_led.value(True)  # Turn on LED to indiciate initilization started
 
     async def wifi_status_handler(self, mode, status, ip):
         print('Attempting WiFi Connection')
@@ -162,7 +162,7 @@ class HomeAssistantPlasmaStick:
             "retain": True,
             "effect": True,
             "effect_list": list(self.strip_controller.effects.effects.keys()),  # list of effects from Effects class
-            #"availability_mode": "any",
+            # "availability_mode": "any",
             "availability": {
                 "payload_not_available": "false",
                 "payload_available": "true",
@@ -178,7 +178,6 @@ class HomeAssistantPlasmaStick:
 
         self.mqtt_broadcast_state()
 
-    @micropython.native
     async def process_messages(self):
         while True:
             if self.message_queue and not self.processing_message:
@@ -227,9 +226,8 @@ class HomeAssistantPlasmaStick:
                     await self.strip_controller.set_state(brightness=brightness, state=state, hue=hue, saturation=saturation, effect=effect)
                     self.mqtt_broadcast_state()
                 self.processing_message = False
-            await asyncio.sleep_ms(50)  # Small delay to yield control
+            await asyncio.sleep_ms(5)  # Small delay to yield control
 
-    @micropython.native
     async def main(self):
         print(f'Starting up... homeassistant-plasmastick - {sys.version}')
 
@@ -240,8 +238,8 @@ class HomeAssistantPlasmaStick:
             if not self.network_manager.isconnected():
                 print(f'Wifi connection failed! {e}. Will try again in {RECONNECT_DELAY} seconds.')
                 await self.strip_controller.effects.status_effect(128, 0, 0)
-                await asyncio.sleep(RECONNECT_DELAY)  #wait 15 seconds before trying again
-                #return  # Exit if WiFi connection fails
+                await asyncio.sleep(RECONNECT_DELAY)  # wait 15 seconds before trying again
+                # return  # Exit if WiFi connection fails
 
         await self.mqtt_connect()
         print('MQTT: Ready')
@@ -256,6 +254,7 @@ class HomeAssistantPlasmaStick:
                     await self.mqtt_connect()
 
                 if ping_counter >= 30 and self.mqtt_client:  # Send a ping every 30 seconds
+                    ping_counter = 0
                     try:
                         self.mqtt_client.ping()
                     except OSError as e:
@@ -279,9 +278,9 @@ class HomeAssistantPlasmaStick:
                         pass
                 self.mqtt_client = None
                 print('MQTT Disconnected')
-                #await self.mqtt_connect()  # Attempt to reconnect
+                # await self.mqtt_connect()  # Attempt to reconnect
 
-            await asyncio.sleep(1)  # Check messages every second
+            await asyncio.sleep_ms(1000)
 
 
 if __name__ == '__main__':

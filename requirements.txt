@@ -1,3 +1,5 @@
 pimoroni-pico-stubs
 requests
 ujson
+asyncio
+micropython-rp2-pico_w-stubs
