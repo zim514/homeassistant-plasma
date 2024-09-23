@@ -226,7 +226,7 @@ class HomeAssistantPlasmaStick:
         self.mqtt_broadcast_state()
 
     async def main(self):
-        print(f'Starting up... homeassistant-plasmastick - {sys.version}')
+        print(f'Starting up... homeassistant-plasmastick - {sys.version} - {CONFIG.MQTT_CLIENTID} - {CONFIG.MQTT_NAME}')
 
         try:
             print('Start up Network_Manager')
@@ -249,7 +249,28 @@ class HomeAssistantPlasmaStick:
                 else:
                     await self.mqtt_connect()
 
-                if ping_counter >= 60 and self.mqtt_client:  # Send a ping every 30 seconds
+                if ping_counter >= 3
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                    0 and self.mqtt_client:  # Send a ping regularly
                     ping_counter = 0
                     try:
                         self.mqtt_client.ping()
@@ -276,7 +297,7 @@ class HomeAssistantPlasmaStick:
                 print('MQTT Disconnected')
                 # await self.mqtt_connect()  # Attempt to reconnect
 
-            await asyncio.sleep_ms(500)
+            await asyncio.sleep_ms(100)
 
 
 if __name__ == '__main__':

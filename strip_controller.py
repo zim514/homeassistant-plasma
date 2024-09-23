@@ -9,6 +9,7 @@
 from random import randrange, uniform
 
 import asyncio
+import gc
 import plasma
 from plasma import plasma_stick
 
@@ -49,6 +50,7 @@ class StripController:
             await StripController._display_current(self.effects.num_leds, self.effects.led_strip, self.effects.current_leds)
             await asyncio.sleep_ms(50)
 
+    @micropython.native
     @staticmethod
     async def _display_current(num_leds, led_strip, current_leds):
         # paint our current LED colours to the strip_controller
@@ -105,6 +107,7 @@ class StripController:
         if self.effect_task:
             try:
                 self.effect_task.cancel()
+                gc.collect()
                 print("Previous effect task cancelled.")
             except asyncio.CancelledError as e:
                 print(f"Previous effect task NOT cancelled: {e}")
@@ -146,6 +149,7 @@ class Effects:
 
         self.default_animation_speed = self.animation_step_size = 1
         self.animation_step_delay = 10
+
 
     async def move_to_target(self, current_leds, target_leds, num_leds):
         for i in range(num_leds):
