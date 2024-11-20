@@ -81,7 +81,7 @@ class HomeAssistantPlasmaStick:
         await self.strip_controller.effects.status_effect(0, 64, 0)
         while self.mqtt_client is None:
             print('MQTT: Init MQTT Client')
-            mqtt_client = MQTTClient(CONFIG.MQTT_CLIENTID, CONFIG.MQTT_SERVER, CONFIG.MQTT_PORT, keepalive=60)
+            mqtt_client = MQTTClient(CONFIG.MQTT_CLIENTID, CONFIG.MQTT_SERVER, CONFIG.MQTT_PORT, CONFIG.MQTT_USER, CONFIG.MQTT_PASSWORD, 60)
             mqtt_client.set_last_will(AVAILABILITY_TOPIC, "false")
             mqtt_client.set_callback(self.mqtt_callback)  # Set callback before connecting
             try:
@@ -240,7 +240,6 @@ class HomeAssistantPlasmaStick:
 
         await self.mqtt_connect()
 
-
         ping_counter = 0
         while True:
             try:
@@ -249,29 +248,7 @@ class HomeAssistantPlasmaStick:
                 else:
                     await self.mqtt_connect()
 
-                if ping_counter >= 3
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                    0 and self.mqtt_client:  # Send a ping regularly
-                    ping_counter = 0
+                if ping_counter >= 3:
                     try:
                         self.mqtt_client.ping()
                     except OSError as e:
