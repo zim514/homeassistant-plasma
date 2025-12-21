@@ -11,7 +11,6 @@ from random import randrange, uniform
 import asyncio
 import gc
 import plasma
-from plasma import plasma_stick
 
 try:
     import config_local as CONFIG
@@ -38,7 +37,8 @@ class StripController:
         self.current_leds = [[0, 0, 0] for _ in range(self.num_leds)]
         self.target_leds = [[0, 0, 0] for _ in range(self.num_leds)]
 
-        self.led_strip = plasma.WS2812(CONFIG.NUM_LEDS, 0, 0, plasma_stick.DAT, color_order=plasma.COLOR_ORDER_RGB)
+        self.led_strip = plasma.WS2812(CONFIG.NUM_LEDS, color_order=plasma.COLOR_ORDER_RGB)
+
         self.led_strip.start()
 
         self.effects = Effects(self.led_strip, CONFIG.NUM_LEDS, self.current_leds, self.target_leds)
@@ -480,3 +480,4 @@ class Effects:
             return [t, p, value]
         else:
             return [value, p, q]
+
